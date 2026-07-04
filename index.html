@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GONMAU TERMINAL — 대시보드 허브</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg: #0A0C10;
+    --panel: #12161D;
+    --panel-hover: #161B24;
+    --border: #1E242D;
+    --text: #E7E9EC;
+    --muted: #7A8290;
+    --faint: #4A5160;
+    --blue: #3B82F6;
+    --blue-dim: #1E3A5F;
+    --crimson: #E5484D;
+    --crimson-dim: #4A1F22;
+    --amber: #D9A441;
+  }
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono{ font-family: 'IBM Plex Mono', monospace; }
+
+  /* background texture: faint grid like a terminal */
+  .grid-bg{
+    position: fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  }
+
+  header{
+    position: sticky; top:0; z-index:10;
+    background: rgba(10,12,16,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner{
+    max-width: 1180px; margin:0 auto; padding: 18px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand-dot{
+    width:8px; height:8px; border-radius:50%; background: var(--amber);
+    display:inline-block; box-shadow: 0 0 8px var(--amber);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  .brand-title{ font-size:16px; font-weight:700; letter-spacing:0.06em; }
+  .brand-sub{ font-size:11px; color:var(--muted); letter-spacing:0.08em; }
+  .clock{ font-size:13px; color:var(--muted); letter-spacing:0.03em; text-align:right; }
+  .clock span{ color: var(--text); }
+
+  /* ticker tape - signature element */
+  .ticker-wrap{
+    border-bottom: 1px solid var(--border);
+    background: #0D1015;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+  }
+  .ticker-wrap::before, .ticker-wrap::after{
+    content:''; position:absolute; top:0; bottom:0; width:60px; z-index:2;
+  }
+  .ticker-wrap::before{ left:0; background: linear-gradient(to right, #0D1015, transparent); }
+  .ticker-wrap::after{ right:0; background: linear-gradient(to left, #0D1015, transparent); }
+  .ticker{
+    display:inline-block;
+    padding: 9px 0;
+    animation: scroll-left 34s linear infinite;
+  }
+  .ticker-wrap:hover .ticker{ animation-play-state: paused; }
+  @keyframes scroll-left{
+    from{ transform: translateX(0); }
+    to{ transform: translateX(-50%); }
+  }
+  .ticker-item{
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 0 22px; font-size:12px; letter-spacing:0.04em;
+    border-right: 1px solid var(--border);
+  }
+  .ticker-item .tag{ color: var(--faint); }
+  .ticker-item.up{ color: var(--crimson); }
+  .ticker-item.flat{ color: var(--blue); }
+
+  main{ position:relative; z-index:1; max-width:1180px; margin:0 auto; padding: 56px 24px 100px; }
+
+  .hero{ margin-bottom: 56px; }
+  .hero-eyebrow{
+    font-size:12px; color: var(--amber); letter-spacing:0.14em; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .hero-eyebrow::after{ content:''; flex:1; height:1px; background: var(--border); }
+  .hero h1{
+    font-size: clamp(28px, 4vw, 42px);
+    line-height:1.25; font-weight:700; margin: 0 0 14px;
+    letter-spacing:-0.01em;
+  }
+  .hero p{ color: var(--muted); font-size:15px; line-height:1.7; max-width:640px; margin:0; }
+
+  section.group{ margin-bottom: 52px; }
+  .group-head{
+    display:flex; align-items:center; gap:12px; margin-bottom: 20px;
+  }
+  .group-badge{
+    font-size:11px; padding: 4px 10px; border-radius:3px;
+    letter-spacing:0.08em; font-weight:600;
+  }
+  .group-badge.blue{ color: var(--blue); background: var(--blue-dim); }
+  .group-badge.crimson{ color: var(--crimson); background: var(--crimson-dim); }
+  .group-title{ font-size:15px; font-weight:600; color: var(--text); }
+  .group-count{ font-size:12px; color: var(--faint); margin-left:auto; }
+
+  .cards{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .card{
+    display:block; text-decoration:none; color: inherit;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .card:hover{
+    transform: translateY(-3px);
+    background: var(--panel-hover);
+  }
+  .card.blue:hover{ border-color: var(--blue); }
+  .card.crimson:hover{ border-color: var(--crimson); }
+
+  .card-code{
+    font-size:11px; color: var(--faint); letter-spacing:0.08em; margin-bottom:12px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .card.blue .card-code{ color: #5B8FD9; }
+  .card.crimson .card-code{ color: #C9666A; }
+  .status-dot{ width:6px; height:6px; border-radius:50%; background: var(--muted); }
+  .card.blue .status-dot{ background: var(--blue); }
+  .card.crimson .status-dot{ background: var(--crimson); }
+
+  .card-title{ font-size:16px; font-weight:600; margin-bottom:8px; }
+  .card-desc{ font-size:13px; color: var(--muted); line-height:1.6; margin-bottom:18px; min-height: 42px; }
+  .card-go{
+    font-size:12px; font-weight:600; letter-spacing:0.03em;
+    display:flex; align-items:center; gap:6px;
+    color: var(--text);
+  }
+  .card.blue .card-go{ color: var(--blue); }
+  .card.crimson .card-go{ color: var(--crimson); }
+  .card-go svg{ width:12px; height:12px; transition: transform .18s ease; }
+  .card:hover .card-go svg{ transform: translateX(3px); }
+
+  footer{
+    border-top: 1px solid var(--border);
+    padding: 24px; text-align:center;
+    color: var(--faint); font-size:12px; letter-spacing:0.03em;
+  }
+
+  @media (max-width: 560px){
+    .header-inner{ flex-direction:column; align-items:flex-start; gap:8px; }
+    .clock{ text-align:left; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .ticker{ animation: none; }
+    .brand-dot{ animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-title mono">GONMAU TERMINAL</span>
+      <span class="brand-sub mono">/ DASHBOARD HUB</span>
+    </div>
+    <div class="clock mono" id="clock">KST <span id="clock-time">--:--:--</span></div>
+  </div>
+  <div class="ticker-wrap">
+    <div class="ticker mono" id="ticker"></div>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-eyebrow mono">PERSONAL DASHBOARD INDEX</div>
+    <h1>흩어진 대시보드를<br>한곳에서 접속.</h1>
+    <p>주식 트래킹, 포트폴리오 관리, 크림슨 데저트 판매 추적까지 — 직접 만든 대시보드로 바로 이동합니다.</p>
+  </div>
+
+  <section class="group">
+    <div class="group-head">
+      <span class="group-badge blue mono">STOCK</span>
+      <span class="group-title">주식 · 포트폴리오</span>
+      <span class="group-count mono">03</span>
+    </div>
+    <div class="cards">
+      <a class="card blue" href="https://stock-tracking-mxxxrbxpzcrw3rrfwzjcru.streamlit.app/" target="_blank" rel="noopener">
+        <div class="card-code mono">STK-01 <span class="status-dot"></span></div>
+        <div class="card-title">종목 트래킹 대시보드</div>
+        <div class="card-desc">펄어비스 등 게임주 외인 지분율·공매도·수급 모니터링</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card blue" href="https://stock-analyzer-zxvogtjybxlwgrhte7gapm.streamlit.app/" target="_blank" rel="noopener">
+        <div class="card-code mono">STK-02 <span class="status-dot"></span></div>
+        <div class="card-title">포트폴리오 트래커 A</div>
+        <div class="card-desc">보유 종목 손익·목표가·손절가 관리 (메인)</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card blue" href="https://stock-analyzer-9ared5cressmavn3bcbtix.streamlit.app/" target="_blank" rel="noopener">
+        <div class="card-code mono">STK-03 <span class="status-dot"></span></div>
+        <div class="card-title">포트폴리오 트래커 B</div>
+        <div class="card-desc">보유 종목 손익·목표가·손절가 관리 (서브/백업)</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <span class="group-badge crimson mono">GAME</span>
+      <span class="group-title">크림슨 데저트 판매 추적</span>
+      <span class="group-count mono">05</span>
+    </div>
+    <div class="cards">
+      <a class="card crimson" href="https://gonmau.github.io/PreOrderBlackDesert/best.html" target="_blank" rel="noopener">
+        <div class="card-code mono">CD-01 <span class="status-dot"></span></div>
+        <div class="card-title">종합 베스트셀러</div>
+        <div class="card-desc">PS Store + Steam 통합 판매 순위 요약</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card crimson" href="https://gonmau.github.io/PreOrderBlackDesert/steam.html" target="_blank" rel="noopener">
+        <div class="card-code mono">CD-02 <span class="status-dot"></span></div>
+        <div class="card-title">Steam 판매 추적</div>
+        <div class="card-desc">Steam 글로벌 탑셀러 순위 및 동시접속자</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card crimson" href="https://gonmau.github.io/PreOrderBlackDesert/sell.html" target="_blank" rel="noopener">
+        <div class="card-code mono">CD-03 <span class="status-dot"></span></div>
+        <div class="card-title">판매량 추적</div>
+        <div class="card-desc">플랫폼별 판매량 추이 및 마일스톤</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card crimson" href="https://gonmau.github.io/blackdesert-cawling/global_rivals.html" target="_blank" rel="noopener">
+        <div class="card-code mono">CD-04 <span class="status-dot"></span></div>
+        <div class="card-title">글로벌 경쟁작 비교</div>
+        <div class="card-desc">국가별 경쟁 타이틀 대비 순위 트래커</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a class="card crimson" href="https://gonmau.github.io/blackdesert-cawling/" target="_blank" rel="noopener">
+        <div class="card-code mono">CD-05 <span class="status-dot"></span></div>
+        <div class="card-title">크롤링 허브</div>
+        <div class="card-desc">blackdesert-cawling 루트 대시보드</div>
+        <div class="card-go">바로가기 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="mono">GONMAU TERMINAL — PERSONAL USE ONLY</footer>
+
+<script>
+  // KST clock
+  function updateClock(){
+    const now = new Date();
+    const kst = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    const hh = String(kst.getHours()).padStart(2,'0');
+    const mm = String(kst.getMinutes()).padStart(2,'0');
+    const ss = String(kst.getSeconds()).padStart(2,'0');
+    document.getElementById('clock-time').textContent = `${hh}:${mm}:${ss}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Ticker tape content, duplicated for seamless loop
+  const items = [
+    { tag: 'STK-01', label: 'STOCK-TRACKING', cls: 'flat' },
+    { tag: 'STK-02', label: 'PORTFOLIO A', cls: 'up' },
+    { tag: 'STK-03', label: 'PORTFOLIO B', cls: 'up' },
+    { tag: 'CD-01', label: 'BEST SELLER', cls: 'flat' },
+    { tag: 'CD-02', label: 'STEAM TRACKER', cls: 'up' },
+    { tag: 'CD-03', label: 'SELL TRACKER', cls: 'flat' },
+    { tag: 'CD-04', label: 'GLOBAL RIVALS', cls: 'up' },
+    { tag: 'CD-05', label: 'CRAWLING HUB', cls: 'flat' },
+  ];
+  const tickerEl = document.getElementById('ticker');
+  const renderItems = (arr) => arr.map(i =>
+    `<span class="ticker-item ${i.cls}"><span class="tag">${i.tag}</span>${i.label}</span>`
+  ).join('');
+  tickerEl.innerHTML = renderItems(items) + renderItems(items);
+</script>
+
+</body>
+</html>
